@@ -105,6 +105,8 @@ class DataTable
     /** @var Instantiator */
     private $instantiator;
 
+    private $clientSideTable;
+
     /**
      * DataTable constructor.
      */
@@ -117,6 +119,7 @@ class DataTable
         $resolver = new OptionsResolver();
         $this->configureOptions($resolver);
         $this->options = $resolver->resolve($options);
+        $this->clientSideTable = false;
     }
 
     /**
@@ -277,25 +280,52 @@ class DataTable
         return $this;
     }
 
+    public function getConfig(): array
+    {
+        if (null === $this->state && $this->isClientSideTable()) {
+            $this->state = DataTableState::fromDefaults($this);
+            $this->state->setLength(PHP_INT_MAX);
+        }
+
+        $resultSet = $this->getResultSet();
+        $config = [
+            'draw' => $this->state->getDraw(),
+            'recordsTotal' => $resultSet->getTotalRecords(),
+            'recordsFiltered' => $resultSet->getTotalDisplayRecords(),
+            'data' => iterator_to_array($resultSet->getData()),
+        ];
+        if ($this->state->isInitial() || $this->isClientSideTable()) {
+            $config['options'] = $this->getInitialResponse();
+            $config['template'] = $this->renderer->renderDataTable($this, $this->template, $this->templateParams);
+        }
+
+        return $config;
+    }
+
+    public function getClientConfig(): array
+    {
+        $this->setClientSideTable(true);
+        $config = $this->getConfig();
+
+        return [
+            'data' => $config['data'],
+            'columns' => $config['options']['columns'],
+            'lengthMenu' => $config['options']['lengthMenu'],
+        ];
+    }
+
+    /**
+     * @return JsonResponse
+     */
     public function getResponse(): JsonResponse
     {
         if (null === $this->state) {
             throw new InvalidStateException('The DataTable does not know its state yet, did you call handleRequest?');
         }
 
-        $resultSet = $this->getResultSet();
-        $response = [
-            'draw' => $this->state->getDraw(),
-            'recordsTotal' => $resultSet->getTotalRecords(),
-            'recordsFiltered' => $resultSet->getTotalDisplayRecords(),
-            'data' => iterator_to_array($resultSet->getData()),
-        ];
-        if ($this->state->isInitial()) {
-            $response['options'] = $this->getInitialResponse();
-            $response['template'] = $this->renderer->renderDataTable($this, $this->template, $this->templateParams);
-        }
+        $config = $this->getConfig();
 
-        return JsonResponse::create($response);
+        return JsonResponse::create($config);
     }
 
     protected function getInitialResponse(): array
@@ -444,6 +474,32 @@ class DataTable
     }
 
     /**
+     * @return bool
+     */
+    public function isClientSideTable(): bool
+    {
+        return $this->clientSideTable;
+    }
+
+    /**
+     * @param bool $clientSideTable
+     *
+     * @return DataTable
+     */
+    public function setClientSideTable(bool $clientSideTable): self
+    {
+        $this->clientSideTable = $clientSideTable;
+
+        return $this;
+    }
+
+    public function getTemplate(): string
+    {
+        return $this->renderer->renderDataTable($this, $this->template, $this->templateParams);
+    }
+
+    /**
+     * @param OptionsResolver $resolver
      * @return $this
      */
     protected function configureOptions(OptionsResolver $resolver)

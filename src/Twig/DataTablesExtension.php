@@ -44,6 +44,12 @@ class DataTablesExtension extends \Twig\Extension\AbstractExtension
                     ],
                 ]);
             }, ['is_safe' => ['html']]),
+            new \Twig_SimpleFunction('datatable_template', function(DataTable $dataTable) {
+                return $dataTable->getTemplate();
+            }, ['is_safe' => ['html']]),
+            new \Twig_SimpleFunction('datatable_config', function(DataTable $dataTable) {
+                return json_encode($dataTable->getClientConfig());
+            }, ['is_safe' => ['html']]),
         ];
     }
 
