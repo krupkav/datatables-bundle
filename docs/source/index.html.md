@@ -67,15 +67,13 @@ The code snippets here should get you started quickly, including jQuery 3. For m
 ```php?start_inline=true
 use Omines\DataTablesBundle\Adapter\ArrayAdapter;
 use Omines\DataTablesBundle\Column\TextColumn;
-use Omines\DataTablesBundle\Controller\DataTablesTrait;
+use Omines\DataTablesBundle\DataTableFactory;
 
 class MyController extends Controller
 {
-    use DataTablesTrait;
-    
-    public function showAction(Request $request)
+    public function showAction(Request $request, DataTableFactory $dataTableFactory)
     {
-        $table = $this->createDataTable()
+        $table = $dataTableFactory->create()
             ->add('firstName', TextColumn::class)
             ->add('lastName', TextColumn::class)
             ->createAdapter(ArrayAdapter::class, [
@@ -88,14 +86,14 @@ class MyController extends Controller
             return $table->getResponse();
         }
         
-        $this->render('list.html.twig', ['datatable' => $table]);
+        return $this->render('list.html.twig', ['datatable' => $table]);
     }
 }
 ```
 This trivial bit of code in your controller prepares a fully functional DataTables instance for use.
 
-The optional <code>DataTablesTrait</code> is included to expose convenience methods in your controller for
-easy instantiation. The `createDataTable` function is used in this example. On the DataTable instance we 
+The <code>DataTableFactory</code> service is injected to expose convenience methods in your controller
+for easy instantiation. The `create` function is used in this example. On the DataTable instance we 
 add 2 columns of type `TextColumn`, and we bind it to an adapter providing a static array as the
 source of the data.
 
@@ -104,6 +102,12 @@ works. If it turns out the request originated from a callback we let the table p
 otherwise we render a template with the table provided as a parameter.
 
 <aside class="notice">To keep your controller thin you should <a href="#datatable-types">make reusable DataTable types under the DataTable namespace of your app/bundle</a>.</aside>
+
+## Controller setup
+
+Previous versions of this bundle offered a <code>DataTablesTrait</code> which assumed that the
+<code>DataTableFactory</code> class was available in the controller's <code>$container</code>. As this
+is deprecated in current versions of Symfony you should use dependency injection instead.
 
 ## Frontend code
 
@@ -192,6 +196,16 @@ The `options` are passed (almost) verbatim to the DataTables clientside construc
 options. Only options which are meaningful to be defined serverside can be set at this level, so
 setting callbacks and events is not possible. These are however easily set on the Javascript end.
 
+## Table configuration
+
+Configuring a specific table is done mainly via the methods on `DataTable`. The most common call
+is `add` to add an extra column to the table as seen in all the examples. More utility methods
+exist and can be chained.
+
+`->addOrderBy($column, string $direction = DataTable::SORT_ASCENDING)`  
+Will set the default sort of the table to the specified column and direction. Repeatable to sort
+by multiple columns.
+
 # Adapters
 
 Adapters are the core elements bridging DataTables functionality to their underlying data source.
@@ -266,11 +280,11 @@ interaction based on internal changes in this bundle and/or Doctrine ORM.
 $table->createAdapter(ORMAdapter::class, [
     'entity' => Employee::class,
     'criteria' => [
-        function () {
-            return Criteria::create()->andWhere(new Comparison('c.name', Comparison::CONTAINS, 'ny 2'));
+        function (QueryBuilder $builder) {
+            $builder->andWhere($builder->expr()->like('c.name', ':test'))->setParameter('test', '%ny 2%');
         },
         new SearchCriteriaProvider(),
-    },
+    ],
 ]);
 ```             
 Analogous to queries you can separately define the criteria processors applied to table queries. The
@@ -281,6 +295,28 @@ in this example.
 Note that implementing your own criteria overrides the default, meaning searching and sorting will no
 longer work automatically. Add the `SearchCriteriaProvider` manually to combine the default behavior
 with your own implementation.
+
+### Events
+
+```php?start_inline=1
+$table->createAdapter(ORMAdapter::class, [
+    'entity' => Employee::class,
+    'query' => function (QueryBuilder $builder) {
+        $builder
+            ->select('e')
+            ->addSelect('c')
+            ->from(Employee::class, 'e')
+            ->leftJoin('e.company', 'c')
+        ;
+    },
+]);
+
+$table->addEventListener(ORMAdapterEvents::PRE_QUERY, function(ORMAdapterQueryEvent $event) {
+    $event->getQuery()->useResultCache(true)->useQueryCache(true);
+});
+```
+The `PRE_QUERY` event is dispatched after the QueryBuilder built the Query
+and before the iteration starts. It can be useful to configure the cache.
 
 ## Elastica
 

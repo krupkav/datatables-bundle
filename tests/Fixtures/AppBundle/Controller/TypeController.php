@@ -12,9 +12,9 @@ declare(strict_types=1);
 
 namespace Tests\Fixtures\AppBundle\Controller;
 
-use Omines\DataTablesBundle\Controller\DataTablesTrait;
 use Omines\DataTablesBundle\DataTable;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Omines\DataTablesBundle\DataTableFactory;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Tests\Fixtures\AppBundle\DataTable\Type\RegularPersonTableType;
 
@@ -23,13 +23,11 @@ use Tests\Fixtures\AppBundle\DataTable\Type\RegularPersonTableType;
  *
  * @author Niels Keurentjes <niels.keurentjes@omines.com>
  */
-class TypeController extends Controller
+class TypeController extends AbstractController
 {
-    use DataTablesTrait;
-
-    public function tableAction(Request $request)
+    public function tableAction(Request $request, DataTableFactory $dataTableFactory)
     {
-        $datatable = $this->createDataTableFromType(RegularPersonTableType::class)
+        $datatable = $dataTableFactory->createFromType(RegularPersonTableType::class)
             ->setName('persons')
             ->setMethod(Request::METHOD_GET)
             ->addOrderBy(1, DataTable::SORT_ASCENDING)

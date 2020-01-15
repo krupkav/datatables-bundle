@@ -12,8 +12,8 @@ declare(strict_types=1);
 
 namespace Tests\Fixtures\AppBundle\Controller;
 
-use Omines\DataTablesBundle\Controller\DataTablesTrait;
-use Symfony\Bundle\FrameworkBundle\Controller\Controller;
+use Omines\DataTablesBundle\DataTableFactory;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\Fixtures\AppBundle\DataTable\Type\CustomQueryTableType;
@@ -23,13 +23,11 @@ use Tests\Fixtures\AppBundle\DataTable\Type\CustomQueryTableType;
  *
  * @author Niels Keurentjes <niels.keurentjes@omines.com>
  */
-class CustomQueryController extends Controller
+class CustomQueryController extends AbstractController
 {
-    use DataTablesTrait;
-
-    public function tableAction(Request $request)
+    public function tableAction(Request $request, DataTableFactory $dataTableFactory)
     {
-        $datatable = $this->createDataTableFromType(CustomQueryTableType::class)
+        $datatable = $dataTableFactory->createFromType(CustomQueryTableType::class)
             ->setMethod(Request::METHOD_GET);
         if ($datatable->handleRequest($request)->isCallback()) {
             return $datatable->getResponse();

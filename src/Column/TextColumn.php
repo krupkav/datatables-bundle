@@ -39,6 +39,15 @@ class TextColumn extends AbstractColumn
         parent::configureOptions($resolver);
 
         $resolver
+            ->setDefault('operator', 'LIKE')
+            ->setDefault(
+                'rightExpr',
+                function ($value) {
+                    return '%' . $value . '%';
+                }
+        );
+
+        $resolver
             ->setDefault('raw', false)
             ->setAllowedTypes('raw', 'bool')
         ;
@@ -46,9 +55,6 @@ class TextColumn extends AbstractColumn
         return $this;
     }
 
-    /**
-     * @return bool
-     */
     public function isRaw(): bool
     {
         return $this->options['raw'];

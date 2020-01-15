@@ -12,7 +12,7 @@ declare(strict_types=1);
 
 namespace Tests\Functional;
 
-use Symfony\Bundle\FrameworkBundle\Client;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Debug\Exception\FlattenException;
 use Symfony\Component\HttpFoundation\Response;
@@ -26,10 +26,10 @@ use Tests\Fixtures\AppKernel;
  */
 class FunctionalTest extends WebTestCase
 {
-    /** @var Client */
+    /** @var KernelBrowser */
     private $client;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->client = self::createClient();
     }
@@ -75,8 +75,8 @@ class FunctionalTest extends WebTestCase
 
         $this->assertSame(0, $json->draw);
         $this->assertSame(6, $json->recordsTotal);
-        $this->assertSame('Donald', $json->data[0]->firstName);
-        $this->assertSame('TRUMP', $json->data[0]->lastName);
+        $this->assertSame('George W.', $json->data[0]->firstName);
+        $this->assertSame('BUSH', $json->data[0]->lastName);
         $this->assertSame('01-01-2017', $json->data[0]->lastActivity);
 
         $json = $this->callDataTableUrl('/type?_dt=persons&draw=1&search[value]=Bush');
@@ -112,6 +112,13 @@ class FunctionalTest extends WebTestCase
         $this->markTestSkipped('Group by functionality is currently not working correctly');
 
         $json = $this->callDataTableUrl('/grouped?_dt=companies');
+
+        $this->assertStringStartsWith('Company ', $json->data[0]->company);
+    }
+
+    public function testGrouped2DataTable()
+    {
+        $json = $this->callDataTableUrl('/grouped2?_dt=companies2&draw=2');
 
         $this->assertStringStartsWith('Company ', $json->data[0]->company);
     }

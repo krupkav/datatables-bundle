@@ -33,10 +33,6 @@ class SearchCriteriaProvider implements QueryBuilderProcessorInterface
         $this->processGlobalSearch($queryBuilder, $state);
     }
 
-    /**
-     * @param QueryBuilder $queryBuilder
-     * @param DataTableState $state
-     */
     private function processSearchColumns(QueryBuilder $queryBuilder, DataTableState $state)
     {
         foreach ($state->getSearchColumns() as $searchInfo) {
@@ -44,24 +40,22 @@ class SearchCriteriaProvider implements QueryBuilderProcessorInterface
             $column = $searchInfo['column'];
             $search = $searchInfo['search'];
 
-            if (!empty($search) && null !== ($filter = $column->getFilter())) {
+            if ('' !== trim($search) && null !== ($filter = $column->getFilter())) {
+                $search = $queryBuilder->expr()->literal($search);
                 $queryBuilder->andWhere(new Comparison($column->getField(), $filter->getOperator(), $search));
             }
         }
     }
 
-    /**
-     * @param QueryBuilder $queryBuilder
-     * @param DataTableState $state
-     */
     private function processGlobalSearch(QueryBuilder $queryBuilder, DataTableState $state)
     {
         if (!empty($globalSearch = $state->getGlobalSearch())) {
             $expr = $queryBuilder->expr();
             $comparisons = $expr->orX();
             foreach ($state->getDataTable()->getColumns() as $column) {
-                if ($column->isGlobalSearchable() && !empty($field = $column->getField())) {
-                    $comparisons->add($expr->like($field, $expr->literal("%{$globalSearch}%")));
+                if ($column->isGlobalSearchable() && !empty($column->getField()) && $column->isValidForSearch($globalSearch)) {
+                    $comparisons->add(new Comparison($column->getLeftExpr(), $column->getOperator(),
+                        $expr->literal($column->getRightExpr($globalSearch))));
                 }
             }
             $queryBuilder->andWhere($comparisons);

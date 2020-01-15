@@ -21,12 +21,14 @@ require __DIR__ . '/../vendor/autoload.php';
 
 // Clean up from previous runs
 @exec('rm -rf ' . escapeshellarg(__DIR__ . '/../tmp'));
+@exec('mkdir ' . escapeshellarg(__DIR__ . '/../tmp'));
 
 // Create basic DB schema
 $kernel = new AppKernel('test', false);
 $output = new ConsoleOutput();
 $application = new Application($kernel);
-$application->get('doctrine:schema:update')->run(new StringInput('--force'), $output);
+$application->get('doctrine:schema:drop')->run(new StringInput('--force --quiet'), $output);
+$application->get('doctrine:schema:create')->run(new StringInput('--quiet'), $output);
 
 // Fill some basic fixtures
 $em = $kernel->getContainer()->get('doctrine')->getManager();

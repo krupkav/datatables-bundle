@@ -38,12 +38,6 @@ abstract class AbstractColumn
     /** @var array<string, mixed> */
     protected $options;
 
-    /**
-     * @param string $name
-     * @param int $index
-     * @param array $options
-     * @param DataTable $dataTable
-     */
     public function initialize(string $name, int $index, array $options = [], DataTable $dataTable)
     {
         $this->name = $name;
@@ -104,7 +98,6 @@ abstract class AbstractColumn
     abstract public function normalize($value);
 
     /**
-     * @param OptionsResolver $resolver
      * @return $this
      */
     protected function configureOptions(OptionsResolver $resolver)
@@ -123,6 +116,9 @@ abstract class AbstractColumn
                 'filter' => null,
                 'className' => null,
                 'render' => null,
+                'leftExpr' => null,
+                'operator' => '=',
+                'rightExpr' => null,
             ])
             ->setAllowedTypes('label', ['null', 'string'])
             ->setAllowedTypes('data', ['null', 'string', 'callable'])
@@ -136,22 +132,19 @@ abstract class AbstractColumn
             ->setAllowedTypes('filter', ['null', 'array'])
             ->setAllowedTypes('className', ['null', 'string'])
             ->setAllowedTypes('render', ['null', 'string', 'callable'])
+            ->setAllowedTypes('operator', ['string'])
+            ->setAllowedTypes('leftExpr', ['null', 'string', 'callable'])
+            ->setAllowedTypes('rightExpr', ['null', 'string', 'callable'])
         ;
 
         return $this;
     }
 
-    /**
-     * @return int
-     */
     public function getIndex(): int
     {
         return $this->index;
     }
 
-    /**
-     * @return string
-     */
     public function getName(): string
     {
         return $this->name;
@@ -189,25 +182,16 @@ abstract class AbstractColumn
         return $this->options['data'];
     }
 
-    /**
-     * @return bool
-     */
     public function isVisible(): bool
     {
         return $this->options['visible'];
     }
 
-    /**
-     * @return bool
-     */
     public function isSearchable(): bool
     {
         return $this->options['searchable'] ?? !empty($this->getField());
     }
 
-    /**
-     * @return bool
-     */
     public function isOrderable(): bool
     {
         return $this->options['orderable'] ?? !empty($this->getOrderField());
@@ -229,12 +213,49 @@ abstract class AbstractColumn
         return $this->options['orderField'] ?? $this->getField();
     }
 
-    /**
-     * @return bool
-     */
     public function isGlobalSearchable(): bool
     {
         return $this->options['globalSearchable'] ?? $this->isSearchable();
+    }
+
+    /**
+     * @return string
+     */
+    public function getLeftExpr()
+    {
+        $leftExpr = $this->options['leftExpr'];
+        if (null === $leftExpr) {
+            return $this->getField();
+        }
+        if (is_callable($leftExpr)) {
+            return call_user_func($leftExpr, $this->getField());
+        }
+
+        return $leftExpr;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getRightExpr($value)
+    {
+        $rightExpr = $this->options['rightExpr'];
+        if (null === $rightExpr) {
+            return $value;
+        }
+        if (is_callable($rightExpr)) {
+            return call_user_func($rightExpr, $value);
+        }
+
+        return $rightExpr;
+    }
+
+    /**
+     * @return string
+     */
+    public function getOperator()
+    {
+        return $this->options['operator'];
     }
 
     /**
@@ -245,16 +266,12 @@ abstract class AbstractColumn
         return $this->options['className'];
     }
 
-    /**
-     * @return DataTable
-     */
     public function getDataTable(): DataTable
     {
         return $this->dataTable;
     }
 
     /**
-     * @param string $name
      * @param mixed $value
      * @return $this
      */
@@ -263,5 +280,14 @@ abstract class AbstractColumn
         $this->options[$name] = $value;
 
         return $this;
+    }
+
+    /**
+     * @param string $value
+     * @return bool
+     */
+    public function isValidForSearch($value)
+    {
+        return true;
     }
 }
